@@ -7,22 +7,8 @@ import com.aliasi.dict.DictionaryEntry;
 import com.aliasi.dict.ExactDictionaryChunker;
 import com.aliasi.dict.MapDictionary;
 import com.aliasi.tokenizer.IndoEuropeanTokenizerFactory;
-import com.aliasi.util.AbstractExternalizable;
-import edu.stanford.nlp.ie.crf.CRFClassifier;
 import edu.stanford.nlp.ling.CoreAnnotations;
 import edu.stanford.nlp.ling.CoreLabel;
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import opennlp.tools.namefind.NameFinderME;
 import opennlp.tools.namefind.NameSample;
 import opennlp.tools.namefind.NameSampleDataStream;
@@ -35,15 +21,18 @@ import opennlp.tools.tokenize.TokenizerModel;
 import opennlp.tools.util.ObjectStream;
 import opennlp.tools.util.PlainTextByLineStream;
 import opennlp.tools.util.Span;
-import opennlp.tools.util.eval.FMeasure;
+import java.io.*;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class Chapter4 {
 
-    private static final String sentences[] = {"Joe was the last person to see Fred. ",
-        "He saw him in Boston at McKenzie's pub at 3:00 where he paid "
-        + "$2.45 for an ale. ",
-        "Joe wanted to go to Vermont for the day to visit a cousin who "
-        + "works at IBM, but Sally and he had to look for Fred"};
+    private static final String[] sentences = {
+            "Joe was the last person to see Fred. ",
+            "He saw him in Boston at McKenzie's pub at 3:00 where he paid $2.45 for an ale. ",
+            "Joe wanted to go to Vermont for the day to visit a cousin who works at IBM, but Sally and he had to look for Fred"
+    };
 
     private static String regularExpressionText
             = "He left his email address (rgb@colorworks.com) and his "
@@ -58,19 +47,19 @@ public class Chapter4 {
     // Основной метод для запуска всех подпрограмм
     public static void main(String[] args) {
         // Использование регулярных выражений
-        usingRegularExpressions(); 
-        
+        usingRegularExpressions();
+
         System.out.println("\n\n--------------");
         // Пример использования OpenNLP
-        usingOpenNLP(); 
-        
+        usingOpenNLP();
+
         System.out.println("\n\n--------------");
         // Пример использования LingPipe для NER (раскомментировать если нужно)
-        usingLingPipeNER(); 
-        
+        usingLingPipeNER();
+
         System.out.println("\n\n--------------");
         // Обучение модели OpenNLP (раскомментировать если нужно)
-        // trainingOpenNLPNERModel(); 
+        // trainingOpenNLPNERModel();
     }
 
     // Метод для получения директории с моделями
@@ -101,7 +90,7 @@ public class Chapter4 {
         Pattern pattern = Pattern.compile(phoneNumberRE + "|" + timeRE + "|" + emailRegEx); // Создание паттерна
 
         // Поиск всех совпадений в строке
-        Matcher matcher = pattern.matcher(regularExpressionText); 
+        Matcher matcher = pattern.matcher(regularExpressionText);
         System.out.println("---Поиск ...");
         while (matcher.find()) {
             System.out.println(matcher.group() + " [" + matcher.start() + ":" + matcher.end() + "]");
@@ -118,17 +107,9 @@ public class Chapter4 {
     // Пример использования OpenNLP для поиска именованных сущностей
     private static void usingOpenNLPNameFinderME() {
         System.out.println("OpenNLP NameFinderME Примеры");
-        // Искусственные данные для тестирования
-        String sentence = "He was the last person to see Fred.";
-        String tokens[] = {"He", "was", "the", "last", "person", "to", "see", "Fred"};
-        Span nameSpans[] = new Span[] {new Span(0, 1), new Span(7, 8)};
 
-        // Обработка фразы с фиктивными данными
-        System.out.println("Одна фраза");
-        for (int i = 0; i < nameSpans.length; i++) {
-            System.out.println("Сегмент: " + nameSpans[i].toString());
-            System.out.println("Сущность: " + tokens[nameSpans[i].getStart()]);
-        }
+        try (InputStream tokenStream = new FileInputStream(new File(getModelDir(), "en-token.bin"));
+             InputStream modelStream = new FileInputStream(new File(getModelDir(), "en-ner-person.bin"))) {
 
             // Инициализация моделей токенизации и поиска именованных сущностей
             TokenizerModel tokenModel = new TokenizerModel(tokenStream);
@@ -136,34 +117,31 @@ public class Chapter4 {
             TokenNameFinderModel entityModel = new TokenNameFinderModel(modelStream);
             NameFinderME nameFinder = new NameFinderME(entityModel);
 
-            // Обработка одной фразы
-            System.out.println("Одна фраза");
+            // Пример обработки одной фразы
             String sentence = "He was the last person to see Fred.";
-            String tokens[] = tokenizer.tokenize(sentence);
-            Span nameSpans[] = nameFinder.find(tokens); // Поиск именованных сущностей
+            String[] tokens = tokenizer.tokenize(sentence);
+            Span[] nameSpans = nameFinder.find(tokens); // Поиск именованных сущностей
 
             for (int i = 0; i < nameSpans.length; i++) {
                 System.out.println("Сегмент: " + nameSpans[i].toString());
-                System.out.println("Сущность: "
-                        + tokens[nameSpans[i].getStart()]);
+                System.out.println("Сущность: " + tokens[nameSpans[i].getStart()]);
             }
             System.out.println();
 
             // Обработка нескольких предложений
-            System.out.println("Предложения");
             for (String sentenceText : sentences) {
-                String tokensArray[] = tokenizer.tokenize(sentenceText);
-                Span nameSpansArray[] = nameFinder.find(tokensArray);
+                String[] tokensArray = tokenizer.tokenize(sentenceText);
+                Span[] nameSpansArray = nameFinder.find(tokensArray);
                 double[] spanProbs = nameFinder.probs(nameSpansArray); // Получение вероятности найденных сущностей
 
                 for (int i = 0; i < nameSpansArray.length; i++) {
                     System.out.println("Сегмент: " + nameSpansArray[i].toString());
-                    System.out.println("Сущность: "
-                            + tokensArray[nameSpansArray[i].getStart()]);
+                    System.out.println("Сущность: " + tokensArray[nameSpansArray[i].getStart()]);
                     System.out.println("Вероятность: " + spanProbs[i]);
                 }
                 System.out.println();
             }
+
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -171,21 +149,21 @@ public class Chapter4 {
 
     // Инициализация словаря для использования с ExactDictionaryChunker
     private static void initializeDictionary() {
-        dictionary = new MapDictionary<String>();
+        dictionary = new MapDictionary<>();
         dictionary.addEntry(
-                new DictionaryEntry<String>("Joe", "PERSON", 1.0));
+                new DictionaryEntry<>("Joe", "PERSON", 1.0));
         dictionary.addEntry(
-                new DictionaryEntry<String>("Fred", "PERSON", 1.0));
+                new DictionaryEntry<>("Fred", "PERSON", 1.0));
         dictionary.addEntry(
-                new DictionaryEntry<String>("Boston", "PLACE", 1.0));
+                new DictionaryEntry<>("Boston", "PLACE", 1.0));
         dictionary.addEntry(
-                new DictionaryEntry<String>("pub", "PLACE", 1.0));
+                new DictionaryEntry<>("pub", "PLACE", 1.0));
         dictionary.addEntry(
-                new DictionaryEntry<String>("Vermont", "PLACE", 1.0));
+                new DictionaryEntry<>("Vermont", "PLACE", 1.0));
         dictionary.addEntry(
-                new DictionaryEntry<String>("IBM", "ORGANIZATION", 1.0));
+                new DictionaryEntry<>("IBM", "ORGANIZATION", 1.0));
         dictionary.addEntry(
-                new DictionaryEntry<String>("Sally", "PERSON", 1.0));
+                new DictionaryEntry<>("Sally", "PERSON", 1.0));
     }
 
     // Подпрограмма для использования ExactDictionaryChunker с LingPipe для поиска сущностей
@@ -193,9 +171,8 @@ public class Chapter4 {
         initializeDictionary(); // Инициализация словаря
         System.out.println("\nСЛОВАРЬ\n" + dictionary);
 
-        ExactDictionaryChunker dictionaryChunker
-                = new ExactDictionaryChunker(dictionary,
-                        IndoEuropeanTokenizerFactory.INSTANCE, true, false);
+        ExactDictionaryChunker dictionaryChunker = new ExactDictionaryChunker(
+                dictionary, IndoEuropeanTokenizerFactory.INSTANCE, true, false);
 
         // Обработка каждого предложения
         for (String sentence : sentences) {
