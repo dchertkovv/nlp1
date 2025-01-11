@@ -118,10 +118,17 @@ public class Chapter4 {
     // Пример использования OpenNLP для поиска именованных сущностей
     private static void usingOpenNLPNameFinderME() {
         System.out.println("OpenNLP NameFinderME Примеры");
-        try (InputStream tokenStream = new FileInputStream(
-                new File(getModelDir(), "en-token.bin"));
-                InputStream modelStream = new FileInputStream(
-                        new File(getModelDir(), "en-ner-time.bin"));) {
+        // Искусственные данные для тестирования
+        String sentence = "He was the last person to see Fred.";
+        String tokens[] = {"He", "was", "the", "last", "person", "to", "see", "Fred"};
+        Span nameSpans[] = new Span[] {new Span(0, 1), new Span(7, 8)};
+
+        // Обработка фразы с фиктивными данными
+        System.out.println("Одна фраза");
+        for (int i = 0; i < nameSpans.length; i++) {
+            System.out.println("Сегмент: " + nameSpans[i].toString());
+            System.out.println("Сущность: " + tokens[nameSpans[i].getStart()]);
+        }
 
             // Инициализация моделей токенизации и поиска именованных сущностей
             TokenizerModel tokenModel = new TokenizerModel(tokenStream);
